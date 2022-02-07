@@ -9,6 +9,7 @@
 
 #include <ros_control_boilerplate/generic_hw_interface.h>
 #include <serial/serial.h>
+#include <std_msgs/Float64MultiArray.h>
 
 namespace arm21
 {
@@ -25,8 +26,10 @@ public:
 
 protected:
   void feedback(std::string serial_msg);
-
-  serial::Serial* serial_;
+  void callback(std_msgs::Float64MultiArray data);
+  ros::Subscriber sub_;
+  ros::Publisher pub_;
+  ros::Rate* rate_;
 };
 }
 

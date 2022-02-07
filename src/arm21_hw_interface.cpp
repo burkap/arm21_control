@@ -12,15 +12,20 @@ namespace arm21
   Arm21HWInterface::Arm21HWInterface(ros::NodeHandle &nh, urdf::Model *urdf_model)
       : ros_control_boilerplate::GenericHWInterface(nh, urdf_model)
   {
-    serial_ = new serial::Serial("/dev/ttyUSB0", 115200, serial::Timeout::simpleTimeout(200));
-    if (serial_->isOpen())
-    {
-      ROS_INFO("Succesfully opened the serial port.");
-    }
-    else
-    {
-      ROS_INFO("Failed to open the serial port.");
-    }
+    sub_ = nh.subscribe("/arm_feedback_topic", 10, &Arm21HWInterface::callback, this);
+    pub_ = nh.advertise<std_msgs::Float64MultiArray>("/arm_command_topic", 10);
+    rate_ = new ros::Rate(37);
+  }
+
+  void Arm21HWInterface::callback(std_msgs::Float64MultiArray data){
+    // TODO: xd
+     
+    joint_position_[0] = data.data[0];
+    joint_position_[1] = data.data[1];
+    joint_position_[2] = data.data[2];
+    joint_position_[3] = data.data[3];
+    joint_position_[4] = data.data[4];
+    joint_position_[5] = data.data[5];
   }
 
   void Arm21HWInterface::enforceLimits(ros::Duration &period)
@@ -110,12 +115,16 @@ namespace arm21
     msg_to_sent += (count ? "1" : "0");
     msg_to_sent += "F";
     // msg_to_sent = "S00000000000000000000000000000000000000000000000000005000F"; // Uncomment this to send handbrake voltage command
-    ROS_INFO("Sending the msgx: %s  with a length of %ld", msg_to_sent.c_str(), msg_to_sent.size());
-    serial_->write(msg_to_sent);
-    std::string result = serial_->readline(26, "B");
 
-    ROS_INFO("Read the msg: %s  with a length of %ld", result.c_str(), result.size());
-    feedback(result);
+    ROS_INFO("Sending the msgx: %lf", joint_position_command_[0]);
+  
+    std::vector<double> command = {joint_position_command_[0], joint_position_command_[1], joint_position_command_[2],
+               joint_position_command_[3], joint_position_command_[4], joint_position_command_[5]};
+    std_msgs::Float64MultiArray msg;
+    msg.data = command;
+    pub_.publish(msg);
+    rate_->sleep();
+    ROS_INFO("Sending the msgx: %s  with a length of %ld", msg_to_sent.c_str(), msg_to_sent.size());
   }
 
   void Arm21HWInterface::feedback(std::string serial_msg)
